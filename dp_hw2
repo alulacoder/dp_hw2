@@ -1,0 +1,61 @@
+import numpy as np
+import tensorflow as tf
+from sklearn.datasets import load_breast_cancer
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.tree import DecisionTreeClassifier
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.models import Sequential
+
+
+cancer = load_breast_cancer()
+X = cancer.data  
+y = cancer.target  
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+encoder = OneHotEncoder(sparse_output=False)
+y_train_encoded = encoder.fit_transform(y_train.reshape(-1, 1))
+y_test_encoded = encoder.transform(y_test.reshape(-1, 1))
+
+print("--- Training Decision Tree Classifier ---")
+ml_model = DecisionTreeClassifier(random_state=42)
+ml_model.fit(X_train, y_train)
+
+ml_predictions = ml_model.predict(X_test)
+ml_accuracy = accuracy_score(y_test, ml_predictions)
+print(f"Decision Tree Test Accuracy: {ml_accuracy * 100:.2f}%\n")
+
+print("--- Training Keras Neural Network ---")
+
+dl_model = Sequential(
+    [
+        tf.keras.Input(shape=(30,)),  
+        Dense(16, activation="relu"),
+        Dense(128, activation="relu"),
+        Dense(2, activation="softmax"),
+    ]
+)
+
+dl_model.compile(
+    optimizer="adam", 
+    loss="categorical_crossentropy", 
+    metrics=["accuracy"]
+)
+
+dl_model.fit(X_train_scaled, y_train_encoded, epochs=50, batch_size=8, verbose=0)
+
+dl_predictions_prob = dl_model.predict(X_test_scaled, verbose=0)
+dl_predictions = np.argmax(dl_predictions_prob, axis=1)
+
+dl_accuracy = accuracy_score(y_test, dl_predictions)
+print(f"Neural Network Test Accuracy: {dl_accuracy * 100:.2f}%")
+
+print("\n--- Final Summary ---")
+print(f"Machine Learning (Decision Tree): {ml_accuracy * 100:.2f}%")
+print(f"Deep Learning (Neural Network):   {dl_accuracy * 100:.2f}%")
